@@ -160,7 +160,7 @@
     </div>
     <p class="eyebrow" id="eyebrow"></p>
     <h1>Finance offices their auditor just <em>flagged</em>.</h1>
-    <p class="lede">A material weakness in internal control over financial reporting leaves the finance office with a corrective action plan to deliver before the same auditor comes back. These are the cities, counties and special districts whose latest single audit reported one, ranked by how many years in a row it has appeared, each with the finance contact from the filing and a draft email.</p>
+    <p class="lede">A material weakness in internal control over financial reporting leaves the finance office with a corrective action plan to deliver before the same auditor comes back. These are the cities, counties and special districts whose latest single audit reported one. They're ranked by how many years in a row it's appeared, and each comes with the finance contact from the filing and a draft email.</p>
     <div class="stats" id="stats"></div>
   </div>
 </section>
@@ -300,9 +300,9 @@ const ymd = d => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => Strin
     const subject = `${g.short} and the next audit`;
     const body = `Hi ${firstName(g.contactName) || '{first name}'},
 
-I saw that the single audit ${g.short} filed in ${monthYear(g.filed)}, for the fiscal year ended ${longDate(g.fyEnd)}, reported a material weakness in internal control over financial reporting${streak}. With a corrective action plan to carry out before the next audit, I thought this might be timely.
+I saw that the single audit ${g.short} filed in ${monthYear(g.filed)}, for the fiscal year ended ${longDate(g.fyEnd)}, reported a material weakness in internal control over financial reporting${streak}. That means a corrective action plan before the next audit, which is the work we help with.
 
-${CONFIG.client} is a cloud-native financial ERP built for local government, made to reduce manual work and strengthen audit readiness. If the team is stretched, our accounting staff can take on reconciliations, the month-end close and the schedules your auditor expects, and we work directly with your external auditor so year-end is a handoff, not a fire drill. Finance directors at the City of Margate and the City of Destin use ${CONFIG.client} today.
+${CONFIG.client} is a cloud-native financial ERP built for local government. If the team is stretched, our accounting staff can take on reconciliations, the month-end close and the schedules your auditor expects. We also work directly with your external auditor through year-end. Finance directors at the City of Margate and the City of Destin use ${CONFIG.client} today.
 
 Would a 20-minute walkthrough be useful before the next audit starts?
 
