@@ -13,7 +13,8 @@ const save = (path, data) => put(path, JSON.stringify(data), {
 async function load() {
   const blob = await head(RAW).catch(() => null);
   if (!blob) return { rows: {}, cursor: null, seeded: [] };
-  const res = await fetch(blob.url, { cache: 'no-store' });
+  // The Blob CDN can serve the previous copy for up to a minute after a write; the upload time busts it.
+  const res = await fetch(`${blob.url}?v=${Date.parse(blob.uploadedAt)}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`Blob read ${res.status}`);
   return res.json();
 }
