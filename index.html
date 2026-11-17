@@ -1,0 +1,421 @@
+<!doctype html>
+<!--
+  Audit-findings prospect list for Aclarian. Built from the lead-magnet tool template; the drawer focus handling,
+  copy fallback, CSV export, sorting and casing are the template's shared plumbing.
+  Data: /targets.json, written hourly to Vercel Blob by api/refresh.js (rewrite in vercel.json).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit Finding Targets</title>
+<meta name="description" content="Local governments whose latest single audit reported a material weakness, ranked, with a draft email for each.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #2c3040;
+    --ink-3: #6b7085;
+    --navy: #172554;
+    --navy-2: #283e7c;
+    --gold: #c2a76a;
+    --gold-hover: #b0955a;
+    --gold-ink: #8a6f2f;
+    --line: #e3e5ec;
+    --wash: #f6f7fa;
+    --card: #ffffff;
+    --high: #8a6f2f;
+    --med: #283e7c;
+    --low: #b9bdcc;
+    --radius: 4px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--wash);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--navy-2); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+
+  /* Hero */
+  .hero { background: linear-gradient(180deg, var(--navy), var(--navy-2)); color: #fff; padding: 0 16px 56px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 0 48px; }
+  .byline { font-size: 15px; color: rgba(255,255,255,.75); }
+  .byline b { color: #fff; font-weight: 600; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; border-radius: 2px; cursor: pointer;
+    padding: 11px 20px; font-weight: 600; font-size: 15px; border: 1px solid transparent; text-decoration: none; white-space: nowrap; flex: none;
+    transition: background .15s, border-color .15s;
+  }
+  .pill.primary { background: var(--gold); color: var(--navy); }
+  .pill.primary:hover { background: var(--gold-hover); }
+  .pill.ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.45); }
+  .pill.ghost:hover { border-color: #fff; }
+  .pill.light { background: #fff; color: var(--navy); border-color: var(--line); }
+  .pill.light:hover { border-color: var(--navy-2); }
+  .eyebrow { color: var(--gold); font-size: 13px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; margin: 0 0 18px; }
+  h1 { font-family: "Libre Baskerville", Georgia, serif; font-size: clamp(32px, 5vw, 54px); font-weight: 400; line-height: 1.15; margin: 0 0 22px; max-width: 860px; }
+  h1 em { font-style: normal; color: var(--gold); }
+  .lede { font-size: clamp(16px, 2vw, 19px); line-height: 1.65; color: rgba(255,255,255,.85); max-width: 740px; margin: 0 0 40px; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .stat { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius); padding: 18px 20px; }
+  .stat .n { font-family: "Libre Baskerville", Georgia, serif; font-size: 28px; }
+  .stat .l { font-size: 14px; color: rgba(255,255,255,.72); margin-top: 4px; }
+
+  /* Filters */
+  .filters { position: sticky; top: 0; z-index: 5; background: rgba(246,247,250,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); padding: 14px 16px; }
+  .filters .wrap { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .field { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 9px 14px; font-size: 15px; outline: none; }
+  .field:focus { border-color: var(--navy-2); }
+  #q { flex: 1 1 220px; min-width: 0; }
+  .chips { display: flex; gap: 6px; }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: var(--radius); padding: 8px 14px; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .chip[aria-pressed="true"] { border-color: var(--navy-2); background: #eef1f9; color: var(--navy); font-weight: 600; }
+  .count { margin-left: auto; font-size: 15px; color: var(--ink-3); white-space: nowrap; }
+
+  /* List */
+  main { padding: 24px 16px 64px; }
+  .list { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .row, .head { display: grid; grid-template-columns: 96px minmax(0, 2.2fr) minmax(0, 1.9fr) minmax(0, 1.1fr) minmax(0, 1.6fr); gap: 16px; align-items: center; padding: 16px 20px; }
+  .head { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); background: var(--wash); border-bottom: 1px solid var(--line); }
+  .head button { all: unset; cursor: pointer; }
+  .head [aria-sort="descending"] button::after { content: " ↓"; }
+  .head [aria-sort="ascending"] button::after { content: " ↑"; }
+  .row { border-bottom: 1px solid var(--line); cursor: pointer; transition: background .12s; }
+  .row:last-child { border-bottom: 0; }
+  .row:hover, .row:focus-visible { background: #f8f9fc; outline: none; }
+  .row.active { background: #eef1f9; }
+  .name { font-weight: 600; color: var(--navy); }
+  .sub { font-size: 14px; color: var(--ink-3); margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .badge.High .dot { background: var(--gold); } .badge.High { color: var(--high); }
+  .badge.Medium .dot { background: var(--med); } .badge.Medium { color: var(--med); }
+  .badge.Low .dot { background: var(--low); } .badge.Low { color: var(--ink-3); }
+  .years { display: inline-flex; gap: 3px; margin-left: 8px; vertical-align: middle; }
+  .years span { width: 14px; height: 6px; border-radius: 1px; background: #e6e8ef; }
+  .years span.on { background: var(--gold); }
+  .empty { padding: 48px 20px; text-align: center; color: var(--ink-3); }
+
+  /* Drawer */
+  .scrim { position: fixed; inset: 0; background: rgba(23,37,84,.45); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(620px, 100%); background: #fff; z-index: 21; transform: translateX(100%); transition: transform .25s ease; display: flex; flex-direction: column; }
+  .drawer.open { transform: none; box-shadow: -20px 0 60px rgba(23,37,84,.2); }
+  .d-head { background: linear-gradient(180deg, var(--navy), var(--navy-2)); color: #fff; padding: 22px 24px; display: flex; gap: 16px; align-items: flex-start; }
+  .d-head h2 { margin: 0; font-family: "Libre Baskerville", Georgia, serif; font-size: 22px; font-weight: 400; }
+  .d-head .sub { color: rgba(255,255,255,.72); }
+  .d-head .links { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 14px; font-size: 15px; }
+  .d-head .links a { color: var(--gold); }
+  .close { margin-left: auto; background: rgba(255,255,255,.1); border: 0; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 20px; line-height: 1; flex: none; }
+  .d-body { padding: 24px; overflow-y: auto; flex: 1; }
+  .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .fact { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+  .fact .n { font-size: 20px; font-weight: 600; color: var(--navy); }
+  .fact .l { font-size: 13px; color: var(--ink-3); }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); font-weight: 600; margin: 0 0 10px; }
+  .kv { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 6px 14px; font-size: 15px; margin: 0 0 24px; }
+  .kv dt { color: var(--ink-3); }
+  .kv dd { margin: 0; overflow-wrap: anywhere; }
+  .compose { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .compose label { display: block; font-size: 13px; color: var(--ink-3); padding: 12px 16px 0; }
+  .compose input, .compose textarea { width: 100%; border: 0; outline: none; padding: 4px 16px 12px; background: transparent; resize: vertical; line-height: 1.6; font-size: 15px; }
+  .compose input { font-weight: 600; border-bottom: 1px solid var(--line); }
+  .compose textarea { min-height: 360px; }
+  .actions { display: flex; gap: 10px; padding: 14px 16px; background: var(--wash); border-top: 1px solid var(--line); align-items: center; }
+  .copied { font-size: 14px; color: var(--navy-2); opacity: 0; transition: opacity .2s; }
+  .copied.show { opacity: 1; }
+
+  footer { padding: 0 16px 40px; font-size: 14px; color: var(--ink-3); }
+  footer .wrap { border-top: 1px solid var(--line); padding-top: 20px; }
+
+  @media (max-width: 860px) {
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .head { display: none; }
+    .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "gov pri" "audit audit" "size contact"; row-gap: 10px; }
+    .c-pri { grid-area: pri; } .c-gov { grid-area: gov; } .c-audit { grid-area: audit; } .c-size { grid-area: size; } .c-contact { grid-area: contact; }
+    .count { margin-left: 0; width: 100%; }
+    .topbar { padding-bottom: 32px; }
+    .topbar .pill { padding: 8px 14px; font-size: 14px; }
+  }
+  @media (max-width: 520px) {
+    .fact { padding: 10px 12px; }
+    .fact .n { font-size: 18px; }
+    .chips { flex-wrap: wrap; }
+    .kv { grid-template-columns: 110px minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<section class="hero">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="byline">Built for the <b id="client-name"></b> team by <b id="firm-name"></b></div>
+      <button class="pill ghost" id="csv" type="button">Download CSV</button>
+    </div>
+    <p class="eyebrow" id="eyebrow"></p>
+    <h1>Finance offices their auditor just <em>flagged</em>.</h1>
+    <p class="lede">A material weakness in internal control over financial reporting leaves the finance office with a corrective action plan to deliver before the same auditor comes back. These are the cities, counties and special districts whose latest single audit reported one, ranked by how many years in a row it has appeared, each with the finance contact from the filing and a draft email.</p>
+    <div class="stats" id="stats"></div>
+  </div>
+</section>
+
+<div class="filters">
+  <div class="wrap">
+    <input class="field" id="q" type="search" placeholder="Search governments, cities or contacts" aria-label="Search governments, cities or contacts">
+    <select class="field" id="state" aria-label="State"><option value="">All states</option></select>
+    <select class="field" id="type" aria-label="Government type">
+      <option value="">All governments</option>
+      <option>City or town</option>
+      <option>County</option>
+      <option>Special district</option>
+    </select>
+    <select class="field" id="streak" aria-label="Years in a row">
+      <option value="">Any finding</option>
+      <option value="2">2+ years in a row</option>
+      <option value="3">3 years in a row</option>
+    </select>
+    <div class="chips" role="group" aria-label="Priority">
+      <button class="chip" type="button" data-pri="High" aria-pressed="true"><span class="dot" style="background:var(--gold)"></span>High</button>
+      <button class="chip" type="button" data-pri="Medium" aria-pressed="true"><span class="dot" style="background:var(--med)"></span>Medium</button>
+      <button class="chip" type="button" data-pri="Low" aria-pressed="false"><span class="dot" style="background:var(--low)"></span>Low</button>
+    </div>
+    <div class="count" id="count"></div>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <div class="list" role="table" aria-label="Local governments with a material weakness">
+      <div class="head" role="row">
+        <div role="columnheader"><button type="button" data-sort="score">Priority</button></div>
+        <div role="columnheader"><button type="button" data-sort="name">Government</button></div>
+        <div role="columnheader"><button type="button" data-sort="streak">Finding</button></div>
+        <div role="columnheader"><button type="button" data-sort="spend">Federal spending</button></div>
+        <div role="columnheader"><span>Finance contact</span></div>
+      </div>
+      <div id="rows"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap"><span id="source"></span></div>
+</footer>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" inert aria-labelledby="d-name">
+  <div class="d-head">
+    <div>
+      <h2 id="d-name"></h2>
+      <div class="sub" id="d-sub"></div>
+      <div class="links" id="d-links"></div>
+    </div>
+    <button class="close" id="close" type="button" aria-label="Close">×</button>
+  </div>
+  <div class="d-body">
+    <div class="facts" id="d-facts"></div>
+    <h3>The audit</h3>
+    <dl class="kv" id="d-audit"></dl>
+    <h3>Finance contact on the filing</h3>
+    <dl class="kv" id="d-contact"></dl>
+    <div class="compose">
+      <label for="d-subject">Subject</label>
+      <input id="d-subject">
+      <label for="d-body">Message</label>
+      <textarea id="d-body"></textarea>
+      <div class="actions">
+        <button class="pill primary" id="copy" type="button">Copy email</button>
+        <a class="pill light" id="mailto" href="#">Open in mail</a>
+        <span class="copied" id="copied">Copied</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<script>
+const CONFIG = { client: 'Aclarian', firm: 'Level Equity', data: 'targets.json' };
+
+const ymd = d => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => String(n).padStart(2, '0')).join('-');
+
+(async () => {
+  const $ = id => document.getElementById(id);
+  $('client-name').textContent = CONFIG.client; $('firm-name').textContent = CONFIG.firm;
+  $('rows').innerHTML = '<div class="empty">Loading the latest single audits…</div>';
+  let data;
+  try {
+    const res = await fetch(CONFIG.data, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(res.status);
+    data = await res.json();
+  } catch (e) { $('rows').innerHTML = '<div class="empty">The audit data did not load. Refresh the page to try again.</div>'; return; }
+  const govs = data.records;
+
+  const money = d => d >= 1e9 ? '$' + (d / 1e9).toFixed(1) + 'B' : d >= 1e6 ? '$' + (d / 1e6).toFixed(d >= 1e7 ? 0 : 1) + 'M' : '$' + Math.round(d / 1e3) + 'K';
+  const fmtDate = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const longDate = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const monthYear = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const ago = d => d < 1 ? 'today' : d === 1 ? 'yesterday' : d < 60 ? d + ' days ago' : Math.round(d / 30.4) + ' months ago';
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // FAC records many names in all caps ("COUNTY OF WARE"). Recase only those, keeping acronyms
+  // (3 letters or fewer, or no vowels) in caps. Mixed-case names are already right.
+  const tidy = s => s !== s.toUpperCase() ? s : s.replace(/[A-Z]+/g, w =>
+    ['OF', 'AND', 'THE'].includes(w) ? w.toLowerCase() : w.length <= 3 || !/[AEIOUY]/.test(w) ? w : w[0] + w.slice(1).toLowerCase());
+  const person = s => s.toLowerCase().replace(/(^|[\s'-])\p{L}/gu, c => c.toUpperCase());
+  const firstName = s => (s.replace(/^(dr|mr|mrs|ms|hon)\.?\s+/i, '').match(/^[\p{L}'-]{2,}/u) || [''])[0];
+  const ordinal = ['', 'first', 'second', 'third'];
+  const phone = s => { const d = String(s || '').replace(/\D/g, ''); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : s; };
+  const fy = data.focusYear;
+
+  govs.forEach(g => {
+    g.display = tidy(g.name);
+    g.short = g.display.replace(/,\s*[^,]+$/, '').replace(/\s+(board of (county )?commissioners|board of supervisors)(,? inc\.?)?$/i, '');
+    g.contactName = g.contact.name ? (g.contact.name === g.contact.name.toUpperCase() ? person(g.contact.name) : g.contact.name) : '';
+    g.contactTitle = g.contact.title ? tidy(g.contact.title) : '';
+  });
+
+  $('eyebrow').textContent = `FY${fy} single audits`;
+  $('stats').innerHTML = [
+    [govs.length.toLocaleString(), 'governments with a material weakness'],
+    [govs.filter(g => g.streak >= 2).length.toLocaleString(), 'flagged two or more years running'],
+    [govs.filter(g => g.streak >= 3).length.toLocaleString(), 'flagged three years running'],
+    [govs.filter(g => g.priority === 'High').length.toLocaleString(), 'rated high priority'],
+  ].map(([n, l]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  $('source').textContent = `Source: Federal Audit Clearinghouse, single audits of local governments for fiscal years ending in ${fy} or later. Refreshed hourly, last on ${new Date(data.updated).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}.`;
+
+  [...new Set(govs.map(g => g.state))].sort().forEach(s => $('state').insertAdjacentHTML('beforeend', `<option>${s}</option>`));
+
+  let sortKey = 'score', current = null;
+  const sortDir = { score: -1, streak: -1, spend: -1, name: 1 };
+  const pri = { High: true, Medium: true, Low: false };
+
+  // The draft a rep sends the finance contact. Every fact comes from the filing; customers named are the ones
+  // Aclarian's own site shows; service wording follows aclarian.com.
+  function message(g) {
+    const streak = g.streak > 1 ? `, the ${ordinal[g.streak] || g.streak + 'th'} year in a row` : '';
+    const subject = `${g.short} and the next audit`;
+    const body = `Hi ${firstName(g.contactName) || '{first name}'},
+
+I saw that the single audit ${g.short} filed in ${monthYear(g.filed)}, for the fiscal year ended ${longDate(g.fyEnd)}, reported a material weakness in internal control over financial reporting${streak}. With a corrective action plan to carry out before the next audit, I thought this might be timely.
+
+${CONFIG.client} is a cloud-native financial ERP built for local government, made to reduce manual work and strengthen audit readiness. If the team is stretched, our accounting staff can take on reconciliations, the month-end close and the schedules your auditor expects, and we work directly with your external auditor so year-end is a handoff, not a fire drill. Finance directors at the City of Margate and the City of Destin use ${CONFIG.client} today.
+
+Would a 20-minute walkthrough be useful before the next audit starts?
+
+Best,
+{your name}`;
+    return { subject, body };
+  }
+
+  function filtered() {
+    const q = $('q').value.trim().toLowerCase(), st = $('state').value, ty = $('type').value, min = +$('streak').value || 0;
+    const list = govs.filter(g =>
+      pri[g.priority] && (!st || g.state === st) && (!ty || g.type === ty) && g.streak >= min &&
+      (!q || [g.display, g.city, g.contactName, g.contactTitle].join(' ').toLowerCase().includes(q)));
+    const dir = sortDir[sortKey];
+    return list.sort((a, b) => (a[sortKey] > b[sortKey] ? 1 : a[sortKey] < b[sortKey] ? -1 : 0) * dir);
+  }
+
+  const years = n => `<span class="years" aria-label="${n} of 3 years">${[1, 2, 3].map(i => `<span class="${i <= n ? 'on' : ''}"></span>`).join('')}</span>`;
+  function render() {
+    const list = filtered();
+    $('count').textContent = `${list.length} of ${govs.length} governments`;
+    $('rows').innerHTML = list.length ? list.map(g => `<div class="row${current === g ? ' active' : ''}" role="row" tabindex="0" data-id="${esc(g.id)}">
+        <div class="c-pri" role="cell"><span class="badge ${g.priority}"><span class="dot"></span>${g.priority}</span></div>
+        <div class="c-gov" role="cell"><div class="name">${esc(g.display)}</div><div class="sub">${esc(tidy(g.city))}, ${g.state} · ${g.type}</div></div>
+        <div class="c-audit" role="cell"><div>${g.streak > 1 ? `${g.streak} years in a row` : `New in FY${g.auditYear}`}${years(g.streak)}</div><div class="sub">Filed ${fmtDate(g.filed)} · ${ago(g.daysSinceFiled)}</div></div>
+        <div class="c-size" role="cell"><div>${g.spend ? money(g.spend) : 'Not reported'}</div><div class="sub">FY ended ${fmtDate(g.fyEnd)}</div></div>
+        <div class="c-contact" role="cell"><div>${esc(g.contactName || 'No contact listed')}</div><div class="sub">${esc(g.contactTitle)}</div></div>
+      </div>`).join('') : '<div class="empty">No governments match these filters.</div>';
+    document.querySelectorAll('.head [role="columnheader"]').forEach(h => {
+      const key = h.firstElementChild.dataset.sort;
+      if (!key) return;
+      if (key === sortKey) h.setAttribute('aria-sort', sortDir[key] > 0 ? 'ascending' : 'descending'); else h.removeAttribute('aria-sort');
+    });
+  }
+
+  const kv = pairs => pairs.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  function open(g) {
+    current = g;
+    const m = message(g);
+    $('d-name').textContent = g.display;
+    $('d-sub').textContent = `${tidy(g.city)}, ${g.state} · ${g.type}`;
+    const search = q => 'https://www.google.com/search?q=' + encodeURIComponent(q);
+    const li = 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(`${g.short} finance director`);
+    $('d-links').innerHTML = `<a href="https://app.fac.gov/dissemination/summary/${encodeURIComponent(g.reportId)}" target="_blank" rel="noopener">Audit on FAC</a><a href="${search(`${g.short} ${g.state} official website`)}" target="_blank" rel="noopener">Website</a><a href="${li}" target="_blank" rel="noopener">Finance team on LinkedIn</a>`;
+    $('d-facts').innerHTML = [
+      [`${g.streak} of 3`, 'recent audits flagged'], [g.spend ? money(g.spend) : 'n/a', 'federal spending'], [fmtDate(g.filed), 'filed'],
+    ].map(([n, l]) => `<div class="fact"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+    $('d-audit').innerHTML = kv([
+      ['Fiscal year', `Ended ${fmtDate(g.fyEnd)}`],
+      ['Finding', 'Material weakness in internal control over financial reporting'],
+      ['Filed', `${fmtDate(g.filed)}${g.lateDays > 0 ? `, ${g.lateDays} days after the nine-month deadline` : ''}`],
+      ['Opinion', g.modified ? 'Modified (qualified, adverse or disclaimer)' : ''],
+      ['Going concern', g.goingConcern ? 'Raised by the auditor' : ''],
+      ['Auditor', esc(tidy(g.auditor))],
+    ]);
+    $('d-contact').innerHTML = kv([
+      ['Name', esc(g.contactName)], ['Title', esc(g.contactTitle)],
+      ['Email', g.contact.email ? `<a href="mailto:${esc(g.contact.email.toLowerCase())}">${esc(g.contact.email.toLowerCase())}</a>` : ''],
+      ['Phone', esc(phone(g.contact.phone))],
+    ]) || '<dd>No contact was listed on the filing.</dd>';
+    $('d-subject').value = m.subject;
+    $('d-body').value = m.body;
+    syncMailto();
+    $('drawer').classList.add('open'); $('scrim').classList.add('open');
+    $('drawer').inert = false;
+    $('close').focus();
+    render();
+  }
+  function close() {
+    const id = current.id;
+    $('drawer').classList.remove('open'); $('scrim').classList.remove('open');
+    $('drawer').inert = true;
+    current = null; render();
+    document.querySelector(`.row[data-id="${CSS.escape(id)}"]`)?.focus();
+  }
+  function syncMailto() {
+    const to = current?.contact.email ? encodeURIComponent(current.contact.email.toLowerCase()) : '';
+    $('mailto').href = `mailto:${to}?subject=${encodeURIComponent($('d-subject').value)}&body=${encodeURIComponent($('d-body').value)}`;
+  }
+
+  const byRow = e => { const r = e.target.closest('.row'); return r && govs.find(g => g.id === r.dataset.id); };
+  $('rows').addEventListener('click', e => { const g = byRow(e); if (g) open(g); });
+  $('rows').addEventListener('keydown', e => { if (e.key === 'Enter') { const g = byRow(e); if (g) open(g); } });
+  $('close').onclick = close; $('scrim').onclick = close;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && current) close(); });
+  ['q', 'state', 'type', 'streak'].forEach(id => $(id).addEventListener('input', render));
+  document.querySelectorAll('.chip').forEach(c => c.onclick = () => { pri[c.dataset.pri] = !pri[c.dataset.pri]; c.setAttribute('aria-pressed', pri[c.dataset.pri]); render(); });
+  document.querySelectorAll('.head button').forEach(btn => btn.onclick = () => { sortKey = btn.dataset.sort; render(); });
+  ['d-subject', 'd-body'].forEach(id => $(id).addEventListener('input', syncMailto));
+  $('copy').onclick = async () => {
+    const text = `Subject: ${$('d-subject').value}\n\n${$('d-body').value}`;
+    let ok = true;
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const t = Object.assign(document.createElement('textarea'), { value: text });
+      document.body.append(t); t.select();
+      try { ok = document.execCommand('copy'); } catch { ok = false; }
+      t.remove();
+    }
+    $('copied').textContent = ok ? 'Copied' : "Couldn't copy";
+    $('copied').classList.add('show'); setTimeout(() => $('copied').classList.remove('show'), 1500);
+  };
+  $('csv').onclick = () => {
+    const cols = ['Priority', 'Government', 'Type', 'City', 'State', 'Fiscal year end', 'Filed', 'Years in a row', 'Federal spending ($)', 'Days past deadline', 'Modified opinion', 'Going concern', 'Auditor', 'Contact', 'Title', 'Email', 'Phone', 'FAC report', 'Email subject', 'Email body'];
+    const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = filtered().map(g => { const m = message(g); return [g.priority, g.display, g.type, tidy(g.city), g.state, g.fyEnd, g.filed, g.streak, g.spend, g.lateDays, g.modified ? 'Yes' : 'No', g.goingConcern ? 'Yes' : 'No', tidy(g.auditor), g.contactName, g.contactTitle, g.contact.email.toLowerCase(), phone(g.contact.phone), `https://app.fac.gov/dissemination/summary/${g.reportId}`, m.subject, m.body].map(q).join(','); });
+    const blob = new Blob([[cols.map(q).join(','), ...lines].join('\n')], { type: 'text/csv' });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `audit-finding-targets-${ymd(new Date())}.csv` });
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+  render();
+  window.__tool = { records: govs, message, filtered }; // used by the smoke test
+})();
+</script>
+</body>
+</html>
