@@ -1,4 +1,7 @@
 {
   "crons": [{ "path": "/api/refresh", "schedule": "17 * * * *" }],
-  "functions": { "api/refresh.js": { "maxDuration": 60 } }
+  "functions": { "api/refresh.js": { "maxDuration": 60 } },
+  "rewrites": [
+    { "source": "/targets.json", "destination": "https://rojyvjh18ew6g9fi.public.blob.vercel-storage.com/fac/targets.json" }
+  ]
 }
