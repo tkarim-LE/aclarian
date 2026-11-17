@@ -258,7 +258,6 @@ const ymd = d => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => Strin
   const money = d => d >= 1e9 ? '$' + (d / 1e9).toFixed(1) + 'B' : d >= 1e6 ? '$' + (d / 1e6).toFixed(d >= 1e7 ? 0 : 1) + 'M' : '$' + Math.round(d / 1e3) + 'K';
   const fmtDate = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const longDate = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  const monthYear = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const ago = d => d < 1 ? 'today' : d === 1 ? 'yesterday' : d < 60 ? d + ' days ago' : Math.round(d / 30.4) + ' months ago';
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // FAC records many names in all caps ("COUNTY OF WARE"). Recase only those, keeping acronyms
@@ -267,9 +266,10 @@ const ymd = d => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => Strin
     ['OF', 'AND', 'THE'].includes(w) ? w.toLowerCase() : w.length <= 3 || !/[AEIOUY]/.test(w) ? w : w[0] + w.slice(1).toLowerCase());
   const person = s => s.toLowerCase().replace(/(^|[\s'-])\p{L}/gu, c => c.toUpperCase());
   const firstName = s => (s.replace(/^(dr|mr|mrs|ms|hon)\.?\s+/i, '').match(/^[\p{L}'-]{2,}/u) || [''])[0];
-  const ordinal = ['', 'first', 'second', 'third'];
   const phone = s => { const d = String(s || '').replace(/\D/g, ''); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : s; };
   const fy = data.focusYear;
+  const perYear = {};
+  govs.forEach(g => perYear[g.auditYear] = (perYear[g.auditYear] || 0) + 1);
 
   govs.forEach(g => {
     g.display = tidy(g.name);
@@ -296,13 +296,12 @@ const ymd = d => [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(n => Strin
   // The draft a rep sends the finance contact. Every fact comes from the filing; customers named are the ones
   // Aclarian's own site shows; service wording follows aclarian.com.
   function message(g) {
-    const streak = g.streak > 1 ? `, the ${ordinal[g.streak] || g.streak + 'th'} year in a row` : '';
     const subject = `${g.short} and the next audit`;
     const body = `Hi ${firstName(g.contactName) || '{first name}'},
 
-I saw that the single audit ${g.short} filed in ${monthYear(g.filed)}, for the fiscal year ended ${longDate(g.fyEnd)}, reported a material weakness in internal control over financial reporting${streak}. That means a corrective action plan before the next audit, which is the work we help with.
+I was going through recent single audit filings and saw that ${g.short}'s audit for the fiscal year ended ${longDate(g.fyEnd)} noted a material weakness in internal control over financial reporting. It's a common finding. ${perYear[g.auditYear].toLocaleString()} cities, counties and special districts had one in their FY${g.auditYear} audits.
 
-${CONFIG.client} is a cloud-native financial ERP built for local government. If the team is stretched, our accounting staff can take on reconciliations, the month-end close and the schedules your auditor expects. We also work directly with your external auditor through year-end. Finance directors at the City of Margate and the City of Destin use ${CONFIG.client} today.
+In case it's useful as you work on the corrective action plan, ${CONFIG.client} is a cloud-native financial ERP built for local government. If the team is stretched, our accounting staff can take on reconciliations, the month-end close and the schedules your auditor expects. We also work directly with your external auditor through year-end. Finance directors at the City of Margate and the City of Destin use ${CONFIG.client} today.
 
 Would a 20-minute walkthrough be useful before the next audit starts?
 
